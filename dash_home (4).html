@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dash — Discover Music Events</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#070b14;--surface:#0c1220;--surface2:#111827;--surface3:#161f30;
+  --border:rgba(99,140,255,0.10);--border2:rgba(99,140,255,0.20);
+  --blue:#4f8cff;--blue-dim:#2a5ce8;--purple:#9b72ff;--sky:#7dd3fc;
+  --text:#e8edf8;--muted:#7a8aaa;--dim:#3a4a6a;
+  --r:14px;--r-sm:8px;--nav:64px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%}
+button{font-family:'Syne',sans-serif;cursor:pointer}
+a{text-decoration:none}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:rgba(79,140,255,0.25);border-radius:2px}
+
+/* ── ANIMATIONS ── */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes floatC{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-28px)}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* ════════════ NAVBAR ════════════ */
+.navbar{
+  position:fixed;top:0;left:0;right:0;z-index:300;
+  height:var(--nav);display:flex;align-items:center;
+  justify-content:space-between;padding:0 48px;
+  background:rgba(7,11,20,.82);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{font-size:22px;font-weight:800;letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-links{display:flex;gap:4px;list-style:none}
+.nav-links a{display:block;padding:6px 14px;font-size:13px;font-weight:500;
+  color:var(--muted);border-radius:6px;transition:all .2s}
+.nav-links a:hover{color:var(--text);background:rgba(79,140,255,.08)}
+.nav-links a.active{color:var(--blue);background:rgba(79,140,255,.08)}
+.nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.nav-pill{display:flex;align-items:center;gap:6px;padding:5px 12px;
+  border:1px solid var(--border2);border-radius:20px;font-size:12px;font-weight:500;
+  color:var(--muted);background:transparent;transition:all .2s;white-space:nowrap}
+.nav-pill:hover{border-color:var(--blue);color:var(--blue)}
+.nav-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--blue);
+  box-shadow:0 0 6px var(--blue);animation:blink 2s ease-in-out infinite;flex-shrink:0}
+.btn-login{padding:7px 18px;border-radius:8px;border:1px solid var(--border2);
+  background:transparent;color:var(--text);font-size:13px;font-weight:600;transition:all .2s}
+.btn-login:hover{border-color:rgba(79,140,255,.4);background:rgba(79,140,255,.06)}
+.nav-hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;padding:4px}
+.nav-hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .3s}
+
+/* Mobile menu */
+.mobile-menu{
+  display:none;position:fixed;top:var(--nav);left:0;right:0;
+  background:rgba(7,11,20,.97);backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);z-index:299;
+  flex-direction:column;padding:16px 24px 24px;gap:4px;
+  transform:translateY(-8px);opacity:0;pointer-events:none;transition:all .25s ease;
+}
+.mobile-menu.open{transform:translateY(0);opacity:1;pointer-events:all}
+.mobile-menu a{display:block;padding:12px 16px;font-size:16px;font-weight:600;
+  color:var(--muted);border-radius:8px;transition:all .2s}
+.mobile-menu a:hover,.mobile-menu a.active{color:var(--blue);background:rgba(79,140,255,.08)}
+.mm-div{height:1px;background:var(--border);margin:8px 0}
+.mm-actions{display:flex;gap:10px;padding-top:4px}
+
+/* ════════════ HERO ════════════ */
+.hero{
+  position:relative;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:calc(var(--nav) + 60px) 24px 100px;overflow:hidden;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 0%,rgba(30,60,160,.40) 0%,transparent 70%),
+    radial-gradient(ellipse 60% 50% at 15% 80%,rgba(79,140,255,.13) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 45% at 85% 70%,rgba(155,114,255,.12) 0%,transparent 60%),
+    var(--bg);
+}
+.hero-grid{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(79,140,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(79,140,255,.04) 1px,transparent 1px);
+  background-size:60px 60px;
+  mask-image:radial-gradient(ellipse 90% 90% at 50% 50%,black 20%,transparent 100%);
+}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
+.orb-1{width:500px;height:500px;top:-120px;left:50%;transform:translateX(-50%);
+  background:radial-gradient(circle,rgba(30,80,220,.28),transparent 70%);
+  animation:floatC 10s ease-in-out infinite}
+.orb-2{width:300px;height:300px;bottom:80px;left:5%;
+  background:radial-gradient(circle,rgba(79,140,255,.16),transparent 70%);
+  animation:floatY 12s ease-in-out infinite;animation-delay:-3s}
+.orb-3{width:260px;height:260px;bottom:60px;right:5%;
+  background:radial-gradient(circle,rgba(155,114,255,.16),transparent 70%);
+  animation:floatY 9s ease-in-out infinite;animation-delay:-6s}
+.wave-canvas{position:absolute;bottom:0;left:0;right:0;height:180px;opacity:.55;pointer-events:none}
+.hero-content{position:relative;z-index:10;max-width:800px;width:100%}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;padding:5px 14px;
+  border:1px solid rgba(79,140,255,.25);border-radius:20px;
+  background:rgba(79,140,255,.07);font-size:11px;font-weight:500;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--sky);
+  margin-bottom:24px;font-family:'Geist Mono',monospace;
+  animation:fadeDown .6s ease both;
+}
+.hero-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--sky);
+  box-shadow:0 0 8px var(--sky);animation:blink 1.5s ease-in-out infinite;flex-shrink:0}
+.hero-h{font-size:clamp(38px,7vw,82px);font-weight:800;line-height:1.05;
+  letter-spacing:-2px;margin-bottom:20px;animation:fadeDown .6s .1s ease both}
+.hero-h .grad{
+  background:linear-gradient(135deg,var(--blue) 0%,var(--purple) 55%,var(--sky) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:clamp(14px,2.5vw,17px);font-weight:400;color:var(--muted);
+  max-width:500px;margin:0 auto 36px;line-height:1.65;animation:fadeDown .6s .2s ease both}
+.hero-actions{display:flex;align-items:center;justify-content:center;
+  gap:12px;flex-wrap:wrap;animation:fadeDown .6s .3s ease both}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:8px;padding:13px 28px;
+  border-radius:10px;border:none;
+  background:linear-gradient(135deg,var(--blue-dim),var(--blue));
+  color:#fff;font-size:15px;font-weight:700;transition:all .25s;
+  box-shadow:0 0 30px rgba(79,140,255,.30),0 4px 20px rgba(0,0,0,.4);
+  position:relative;overflow:hidden;white-space:nowrap;
+}
+.btn-primary::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.14),transparent);
+  opacity:0;transition:opacity .25s}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 50px rgba(79,140,255,.45),0 8px 30px rgba(0,0,0,.5)}
+.btn-primary:hover::before{opacity:1}
+.btn-secondary{
+  display:inline-flex;align-items:center;gap:8px;padding:13px 24px;
+  border-radius:10px;border:1px solid var(--border2);
+  background:rgba(255,255,255,.03);color:var(--text);
+  font-size:15px;font-weight:600;transition:all .2s;white-space:nowrap;
+}
+.btn-secondary:hover{border-color:rgba(79,140,255,.4);background:rgba(79,140,255,.07)}
+.hero-stats{
+  display:flex;justify-content:center;align-items:center;
+  margin-top:48px;animation:fadeDown .6s .4s ease both;
+  border:1px solid var(--border);border-radius:12px;
+  background:rgba(12,18,32,.65);backdrop-filter:blur(10px);
+  overflow:hidden;max-width:540px;margin-left:auto;margin-right:auto;
+}
+.h-stat{flex:1;padding:16px 10px;text-align:center;border-right:1px solid var(--border)}
+.h-stat:last-child{border-right:none}
+.h-stat-n{font-size:21px;font-weight:800;font-family:'Geist Mono',monospace;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.h-stat-l{font-size:10px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:3px}
+
+/* ════════════ EVENTS SECTION ════════════ */
+.events-section{padding:72px 48px 80px;max-width:1280px;margin:0 auto}
+.sec-label{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:500;
+  letter-spacing:2.5px;text-transform:uppercase;color:var(--blue);
+  font-family:'Geist Mono',monospace;margin-bottom:8px}
+.sec-label::before{content:'';display:block;width:18px;height:1px;background:var(--blue)}
+.sec-header{display:flex;justify-content:space-between;align-items:flex-end;
+  margin-bottom:28px;gap:12px}
+.sec-title{font-size:clamp(22px,4vw,30px);font-weight:800;letter-spacing:-.6px}
+.ev-count{font-size:13px;color:var(--muted);font-weight:500;white-space:nowrap}
+
+/* Filter row */
+.filter-row{display:flex;gap:6px;margin-bottom:28px;overflow-x:auto;
+  padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.f-tab{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  border-radius:20px;border:1px solid var(--border);background:transparent;
+  color:var(--muted);font-size:12px;font-weight:600;white-space:nowrap;
+  transition:all .2s;flex-shrink:0}
+.f-tab:hover{border-color:var(--border2);color:var(--text)}
+.f-tab.active{border-color:var(--blue);background:rgba(79,140,255,.10);color:var(--blue)}
+.f-tab .cnt{display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;background:rgba(79,140,255,.15);
+  font-size:10px;color:var(--blue)}
+
+/* Event cards */
+.events-list{display:flex;flex-direction:column;gap:12px}
+.ev-card{
+  display:grid;grid-template-columns:220px 1fr auto;
+  border:1px solid var(--border);border-radius:var(--r);
+  background:var(--surface);overflow:hidden;cursor:pointer;
+  transition:all .25s ease;position:relative;
+  animation:slideUp .5s ease both;
+}
+.ev-card:nth-child(1){animation-delay:.05s}
+.ev-card:nth-child(2){animation-delay:.10s}
+.ev-card:nth-child(3){animation-delay:.15s}
+.ev-card:nth-child(4){animation-delay:.20s}
+.ev-card:nth-child(5){animation-delay:.25s}
+.ev-card:nth-child(6){animation-delay:.30s}
+.ev-card:hover{border-color:rgba(79,140,255,.30);background:var(--surface2);
+  transform:translateY(-2px);box-shadow:0 8px 40px rgba(0,0,0,.45),0 0 0 1px rgba(79,140,255,.08)}
+.ev-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--blue),var(--purple));
+  opacity:0;transition:opacity .25s;border-radius:3px 0 0 3px}
+.ev-card:hover::before{opacity:1}
+
+/* Card image */
+.c-img{position:relative;overflow:hidden;background:var(--surface2);
+  height:100%;min-height:160px;flex-shrink:0}
+.c-img img{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center top;transition:transform .4s ease}
+.ev-card:hover .c-img img{transform:scale(1.06)}
+.c-badge{position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:4px;
+  font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  font-family:'Geist Mono',monospace;z-index:2}
+.b-live{background:rgba(79,140,255,.88);color:#fff}
+.b-hot{background:rgba(255,100,50,.88);color:#fff}
+.b-free{background:rgba(0,200,100,.88);color:#fff}
+.b-soon{background:rgba(155,114,255,.88);color:#fff}
+
+/* Card body */
+.c-body{padding:20px 22px;display:flex;flex-direction:column;justify-content:center;gap:9px;min-width:0}
+.c-genre{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--purple);font-family:'Geist Mono',monospace}
+.c-title{font-size:clamp(15px,2vw,18px);font-weight:800;letter-spacing:-.3px;line-height:1.2}
+.c-desc{font-size:13px;color:var(--muted);line-height:1.55;font-weight:400;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.c-meta{display:flex;flex-wrap:wrap;gap:6px 14px}
+.c-meta-i{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);font-weight:500}
+.c-att{display:flex;align-items:center;gap:8px}
+.av-stack{display:flex}
+.av{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--surface);
+  margin-left:-6px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.av:first-child{margin-left:0}
+.av1{background:linear-gradient(135deg,#4f8cff,#7b2fff)}
+.av2{background:linear-gradient(135deg,#7b2fff,#ff4d9b)}
+.av3{background:linear-gradient(135deg,#00c864,#00a8ff)}
+.att-txt{font-size:11px;color:var(--dim);font-weight:500}
+
+/* Card right */
+.c-right{padding:20px;display:flex;flex-direction:column;align-items:flex-end;
+  justify-content:space-between;border-left:1px solid var(--border);min-width:150px;flex-shrink:0}
+.c-price{font-size:20px;font-weight:800;letter-spacing:-.5px;font-family:'Geist Mono',monospace;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:right}
+.c-price.free{background:linear-gradient(135deg,#00c864,#00a8ff);
+  -webkit-background-clip:text;background-clip:text}
+.c-price-s{font-size:10px;color:var(--dim);margin-top:2px;text-align:right}
+.c-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.btn-det{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;
+  border-radius:8px;border:1px solid var(--border2);background:rgba(79,140,255,.07);
+  color:var(--blue);font-size:12px;font-weight:700;transition:all .2s;white-space:nowrap}
+.btn-det:hover{background:rgba(79,140,255,.16);border-color:var(--blue)}
+.btn-save{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;
+  border-radius:6px;border:1px solid var(--border);background:transparent;
+  color:var(--dim);font-size:11px;font-weight:600;transition:all .2s;white-space:nowrap}
+.btn-save:hover{border-color:rgba(155,114,255,.4);color:var(--purple)}
+.btn-save.saved{border-color:rgba(155,114,255,.4);color:var(--purple);background:rgba(155,114,255,.07)}
+
+/* Load more */
+.load-more{display:flex;justify-content:center;margin-top:36px}
+.btn-load{display:inline-flex;align-items:center;gap:8px;padding:12px 32px;
+  border-radius:10px;border:1px solid var(--border2);background:transparent;
+  color:var(--muted);font-size:14px;font-weight:600;transition:all .2s}
+.btn-load:hover{border-color:var(--blue);color:var(--blue);background:rgba(79,140,255,.05)}
+
+/* ════════════ GENRE STRIP ════════════ */
+.genre-section{max-width:1280px;margin:0 auto;padding:0 48px 100px}
+.cat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.cat-card{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:20px 10px;border:1px solid var(--border);border-radius:10px;
+  background:var(--surface);cursor:pointer;transition:all .2s}
+.cat-card:hover,.cat-card.active{border-color:rgba(79,140,255,.3);background:rgba(79,140,255,.07)}
+.cat-icon{font-size:22px}
+.cat-lbl{font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--muted);text-align:center}
+.cat-card.active .cat-lbl{color:var(--blue)}
+
+/* ════════════ BOTTOM NAV (mobile) ════════════ */
+.bottom-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:300;
+  background:rgba(7,11,20,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  padding:8px 0 max(8px,env(safe-area-inset-bottom));
+}
+.bn-inner{display:flex;justify-content:space-around}
+.bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 16px;
+  color:var(--dim);font-size:10px;font-weight:600;letter-spacing:.3px;
+  cursor:pointer;transition:color .2s;background:none;border:none;flex:1}
+.bn-item.active{color:var(--blue)}
+.bn-item:hover{color:var(--muted)}
+.bn-icon{font-size:18px;line-height:1}
+
+/* ════════════ MODAL ════════════ */
+.modal-overlay{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(4,7,14,.87);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;padding:24px;overflow-y:auto;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);border-radius:18px;
+  width:100%;max-width:680px;overflow:hidden;
+  animation:modalIn .3s ease both;position:relative;margin:auto;
+}
+.modal-img{width:100%;height:240px;object-fit:cover;object-position:center top;display:block}
+.modal-body{padding:28px}
+.m-genre{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  color:var(--purple);font-family:'Geist Mono',monospace;margin-bottom:8px}
+.m-title{font-size:clamp(20px,4vw,26px);font-weight:800;letter-spacing:-.5px;
+  margin-bottom:12px;line-height:1.15}
+.m-desc{font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:22px}
+.m-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.m-detail{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.m-detail-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--dim);margin-bottom:5px;font-family:'Geist Mono',monospace}
+.m-detail-val{font-size:14px;font-weight:700;color:var(--text)}
+.m-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.m-price{font-size:28px;font-weight:800;font-family:'Geist Mono',monospace;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.m-price.free{background:linear-gradient(135deg,#00c864,#00a8ff);
+  -webkit-background-clip:text;background-clip:text}
+.m-price-s{font-size:11px;color:var(--dim);margin-top:2px}
+.btn-ticket{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;
+  border-radius:10px;border:none;background:linear-gradient(135deg,var(--blue-dim),var(--blue));
+  color:#fff;font-size:15px;font-weight:700;transition:all .2s;white-space:nowrap;
+  box-shadow:0 0 30px rgba(79,140,255,.25)}
+.btn-ticket:hover{transform:translateY(-1px);box-shadow:0 0 40px rgba(79,140,255,.4)}
+.modal-close{position:absolute;top:14px;right:14px;width:32px;height:32px;
+  border-radius:50%;border:1px solid var(--border2);background:rgba(7,11,20,.75);
+  color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .2s;z-index:10}
+.modal-close:hover{color:var(--text);border-color:var(--blue)}
+
+/* ════════════ TOAST ════════════ */
+.toast{
+  position:fixed;bottom:90px;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--surface3);border:1px solid var(--border2);
+  border-radius:30px;padding:10px 20px;
+  font-size:13px;font-weight:600;color:var(--text);
+  z-index:600;opacity:0;transition:all .3s ease;white-space:nowrap;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ════════════ RESPONSIVE — TABLET ≤1024px ════════════ */
+@media(max-width:1024px){
+  .navbar{padding:0 28px}
+  .nav-links{display:none}
+  .nav-hamburger{display:flex}
+  .nav-pill{display:none}
+  .mobile-menu{display:flex}
+  .hero{padding:calc(var(--nav) + 48px) 28px 80px}
+  .events-section{padding:56px 28px 60px}
+  .genre-section{padding:0 28px 80px}
+  .cat-grid{grid-template-columns:repeat(3,1fr)}
+  .ev-card{grid-template-columns:180px 1fr auto}
+  .c-right{min-width:130px;padding:16px}
+}
+
+/* ════════════ RESPONSIVE — MOBILE ≤640px ════════════ */
+@media(max-width:640px){
+  :root{--nav:60px}
+  .navbar{padding:0 18px;height:60px}
+  .nav-logo{font-size:20px}
+  .btn-login{display:none}
+  .nav-pill{display:none}
+  .nav-hamburger{display:flex}
+  .mobile-menu{top:60px}
+  .hero{padding:calc(60px + 40px) 18px 80px;min-height:100svh}
+  .hero-h{letter-spacing:-1px}
+  .hero-sub{font-size:14px;margin-bottom:28px}
+  .hero-actions{gap:10px}
+  .btn-primary{padding:12px 22px;font-size:14px}
+  .btn-secondary{padding:12px 18px;font-size:14px}
+  .hero-stats{margin-top:32px;max-width:100%}
+  .h-stat{padding:12px 6px}
+  .h-stat-n{font-size:17px}
+  .h-stat-l{font-size:9px}
+  .orb-1{width:260px;height:260px}
+  .orb-2,.orb-3{width:150px;height:150px}
+
+  /* Events go vertical */
+  .events-section{padding:48px 16px 60px}
+  .sec-header{flex-direction:column;align-items:flex-start;gap:4px}
+  .ev-card{grid-template-columns:1fr;grid-template-rows:200px auto auto}
+  .ev-card::before{width:100%;height:3px;top:0;left:0;bottom:auto;border-radius:0}
+  .c-img{height:200px;min-height:unset;width:100%}
+  .c-body{padding:16px;gap:8px}
+  .c-desc{-webkit-line-clamp:3}
+  .c-meta{gap:6px 12px}
+  .c-right{
+    flex-direction:row;align-items:center;justify-content:space-between;
+    border-left:none;border-top:1px solid var(--border);
+    min-width:unset;padding:14px 16px;
+  }
+  .c-price{font-size:18px}
+  .c-actions{flex-direction:row;align-items:center}
+
+  /* Genre */
+  .genre-section{padding:0 16px 100px}
+  .cat-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+  .cat-card{padding:14px 8px}
+  .cat-icon{font-size:20px}
+  .cat-lbl{font-size:10px}
+
+  /* Bottom nav */
+  .bottom-nav{display:block}
+
+  /* Modal slides up from bottom */
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal{border-radius:18px 18px 0 0;max-width:100%;max-height:90svh;overflow-y:auto}
+  .modal-img{height:200px}
+  .modal-body{padding:20px}
+  .m-grid{grid-template-columns:1fr;gap:8px}
+  .m-footer{flex-direction:column;align-items:stretch}
+  .btn-ticket{justify-content:center}
+  .toast{bottom:80px}
+}
+
+/* ════════════ EXTRA SMALL ≤380px ════════════ */
+@media(max-width:380px){
+  .hero-stats{display:none}
+  .cat-grid{grid-template-columns:repeat(2,1fr)}
+  .c-actions{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<nav class="navbar">
+  <div class="nav-logo">Dash</div>
+  <ul class="nav-links">
+    <li><a href="#" class="active">Home</a></li>
+    <li><a href="#events">Events</a></li>
+    <li><a href="#">Artists</a></li>
+    <li><a href="#">Venues</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="nav-pill"><span class="dot"></span>24 Live Now</button>
+    <button class="btn-login">Sign In</button>
+    <button class="nav-hamburger" id="hbg" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mmenu">
+  <a href="#" class="active">Home</a>
+  <a href="#events" id="mmEvents">Events</a>
+  <a href="#">Artists</a>
+  <a href="#">Venues</a>
+  <div class="mm-div"></div>
+  <div class="mm-actions">
+    <button class="btn-primary" style="flex:1;justify-content:center;font-size:13px;padding:10px 16px"
+      onclick="document.getElementById('events').scrollIntoView({behavior:'smooth'});closeMM()">Join the Movement</button>
+    <button class="btn-secondary" style="flex:1;justify-content:center;font-size:13px;padding:10px 16px">Sign In</button>
+  </div>
+</div>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <canvas class="wave-canvas" id="wc"></canvas>
+  <div class="hero-content">
+    <div class="hero-badge"><span class="hero-badge-dot"></span>Live Events · Music Discovery</div>
+    <h1 class="hero-h">Discover<br><span class="grad">Music Events</span></h1>
+    <p class="hero-sub">Your portal to the most electric live experiences — Afrobeats nights, jazz sessions, underground raves, and everything in between.</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="document.getElementById('events').scrollIntoView({behavior:'smooth'})">
+        Join the Movement
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="btn-secondary" onclick="document.getElementById('events').scrollIntoView({behavior:'smooth'})">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="currentColor"/></svg>
+        Browse Events
+      </button>
+    </div>
+    <div class="hero-stats">
+      <div class="h-stat"><div class="h-stat-n">1,200+</div><div class="h-stat-l">Monthly Events</div></div>
+      <div class="h-stat"><div class="h-stat-n">340+</div><div class="h-stat-l">Artists</div></div>
+      <div class="h-stat"><div class="h-stat-n">80+</div><div class="h-stat-l">Venues</div></div>
+      <div class="h-stat"><div class="h-stat-n">14</div><div class="h-stat-l">Cities</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ EVENTS ══ -->
+<section class="events-section" id="events">
+  <div class="sec-header">
+    <div>
+      <div class="sec-label">Line-up</div>
+      <div class="sec-title">Upcoming Events</div>
+    </div>
+    <div class="ev-count">Showing 6 of 148 events</div>
+  </div>
+
+  <div class="filter-row">
+    <button class="f-tab active">All Events <span class="cnt">148</span></button>
+    <button class="f-tab">Tonight <span class="cnt">24</span></button>
+    <button class="f-tab">This Week <span class="cnt">67</span></button>
+    <button class="f-tab">Afrobeats</button>
+    <button class="f-tab">Amapiano</button>
+    <button class="f-tab">Jazz</button>
+    <button class="f-tab">Highlife</button>
+    <button class="f-tab">Electronic</button>
+    <button class="f-tab">Free Entry</button>
+  </div>
+
+  <div class="events-list">
+
+    <div class="ev-card" onclick="openModal(0)">
+      <div class="c-img">
+        <img src="https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600&q=80" alt="Burna Boy concert">
+        <span class="c-badge b-live">Live Tonight</span>
+      </div>
+      <div class="c-body">
+        <div class="c-genre">🔥 Afrobeats</div>
+        <div class="c-title">Burna Boy — Space Drift Tour</div>
+        <div class="c-desc">An explosive Afrobeats headline show from Grammy Award winner Burna Boy. Expect anthems, special guests, and a night that will define 2026.</div>
+        <div class="c-meta">
+          <div class="c-meta-i">📅 Thu, Mar 19, 2026</div>
+          <div class="c-meta-i">🕘 9:00 PM – 2:00 AM</div>
+          <div class="c-meta-i">📍 Ibadan</div>
+          <div class="c-meta-i">🏟 Agodi Gardens Amphitheatre</div>
+        </div>
+        <div class="c-att">
+          <div class="av-stack"><div class="av av1"></div><div class="av av2"></div><div class="av av3"></div></div>
+          <div class="att-txt">2,400+ attending</div>
+        </div>
+      </div>
+      <div class="c-right">
+        <div><div class="c-price">₦15,000</div><div class="c-price-s">General Admission</div></div>
+        <div class="c-actions">
+          <button class="btn-det" onclick="event.stopPropagation();openModal(0)">View Details →</button>
+          <button class="btn-save" onclick="event.stopPropagation();toggleSave(this)">♡ Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev-card" onclick="openModal(1)">
+      <div class="c-img">
+        <img src="https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=600&q=80" alt="Seun Kuti jazz">
+        <span class="c-badge b-soon">This Week</span>
+      </div>
+      <div class="c-body">
+        <div class="c-genre">🎷 Jazz & Soul</div>
+        <div class="c-title">Seun Kuti & Egypt 80 — Afrobeat Revivalist</div>
+        <div class="c-desc">Seun Kuti continues his father's revolutionary Afrobeat legacy. A hypnotic blend of jazz, funk, and fierce political energy in an intimate seated venue.</div>
+        <div class="c-meta">
+          <div class="c-meta-i">📅 Fri, Mar 20, 2026</div>
+          <div class="c-meta-i">🕘 8:00 PM – 11:00 PM</div>
+          <div class="c-meta-i">📍 Ibadan</div>
+          <div class="c-meta-i">🏟 The Place, Jericho</div>
+        </div>
+        <div class="c-att">
+          <div class="av-stack"><div class="av av2"></div><div class="av av3"></div></div>
+          <div class="att-txt">540 attending</div>
+        </div>
+      </div>
+      <div class="c-right">
+        <div><div class="c-price">₦3,500</div><div class="c-price-s">Table & Standing</div></div>
+        <div class="c-actions">
+          <button class="btn-det" onclick="event.stopPropagation();openModal(1)">View Details →</button>
+          <button class="btn-save" onclick="event.stopPropagation();toggleSave(this)">♡ Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev-card" onclick="openModal(2)">
+      <div class="c-img">
+        <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&q=80" alt="Tems concert">
+        <span class="c-badge b-hot">Selling Fast</span>
+      </div>
+      <div class="c-body">
+        <div class="c-genre">🌀 R&B / Afropop</div>
+        <div class="c-title">Tems × Omah Lay — Midnight Frequency</div>
+        <div class="c-desc">Two of Africa's most magnetic voices share a stage. A dreamy, soul-drenched night of R&B-infused Afropop with a full live band in tow.</div>
+        <div class="c-meta">
+          <div class="c-meta-i">📅 Sat, Mar 21, 2026</div>
+          <div class="c-meta-i">🕘 8:30 PM – 12:00 AM</div>
+          <div class="c-meta-i">📍 Ibadan</div>
+          <div class="c-meta-i">🏟 The Palms Event Centre</div>
+        </div>
+        <div class="c-att">
+          <div class="av-stack"><div class="av av1"></div><div class="av av2"></div><div class="av av3"></div></div>
+          <div class="att-txt">2,891 attending · Almost sold out</div>
+        </div>
+      </div>
+      <div class="c-right">
+        <div><div class="c-price">₦25,000</div><div class="c-price-s">VIP · Regular ₦12,000</div></div>
+        <div class="c-actions">
+          <button class="btn-det" onclick="event.stopPropagation();openModal(2)">View Details →</button>
+          <button class="btn-save" onclick="event.stopPropagation();toggleSave(this)">♡ Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev-card" onclick="openModal(3)">
+      <div class="c-img">
+        <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&q=80" alt="Open mic night">
+        <span class="c-badge b-free">Free Entry</span>
+      </div>
+      <div class="c-body">
+        <div class="c-genre">🎙 Open Mic</div>
+        <div class="c-title">Underground Voices — Open Mic Night</div>
+        <div class="c-desc">Ibadan's most vibrant open mic platform for emerging poets, singers, rappers, and spoken word artists. Come perform or witness the next big thing.</div>
+        <div class="c-meta">
+          <div class="c-meta-i">📅 Sun, Mar 22, 2026</div>
+          <div class="c-meta-i">🕘 7:00 PM – 10:30 PM</div>
+          <div class="c-meta-i">📍 Ibadan</div>
+          <div class="c-meta-i">🏟 Cubana, Ring Road</div>
+        </div>
+        <div class="c-att">
+          <div class="av-stack"><div class="av av3"></div><div class="av av1"></div></div>
+          <div class="att-txt">180 attending</div>
+        </div>
+      </div>
+      <div class="c-right">
+        <div><div class="c-price free">Free</div><div class="c-price-s">Open to all</div></div>
+        <div class="c-actions">
+          <button class="btn-det" onclick="event.stopPropagation();openModal(3)">View Details →</button>
+          <button class="btn-save" onclick="event.stopPropagation();toggleSave(this)">♡ Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev-card" onclick="openModal(4)">
+      <div class="c-img">
+        <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80" alt="Adekunle Gold acoustic">
+        <span class="c-badge b-soon">Upcoming</span>
+      </div>
+      <div class="c-body">
+        <div class="c-genre">🎵 Highlife</div>
+        <div class="c-title">Adekunle Gold × Simi — Acoustic Sessions</div>
+        <div class="c-desc">An intimate acoustic evening with Nigeria's most beloved musical couple. Raw, stripped-back versions of fan favourites plus new material from Gold's latest LP.</div>
+        <div class="c-meta">
+          <div class="c-meta-i">📅 Fri, Mar 27, 2026</div>
+          <div class="c-meta-i">🕘 7:30 PM – 10:00 PM</div>
+          <div class="c-meta-i">📍 Osogbo</div>
+          <div class="c-meta-i">🏟 Leisure Mall, Osogbo</div>
+        </div>
+        <div class="c-att">
+          <div class="av-stack"><div class="av av2"></div><div class="av av1"></div><div class="av av3"></div></div>
+          <div class="att-txt">342 attending</div>
+        </div>
+      </div>
+      <div class="c-right">
+        <div><div class="c-price">₦8,500</div><div class="c-price-s">Seated Tickets</div></div>
+        <div class="c-actions">
+          <button class="btn-det" onclick="event.stopPropagation();openModal(4)">View Details →</button>
+          <button class="btn-save" onclick="event.stopPropagation();toggleSave(this)">♡ Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ev-card" onclick="openModal(5)">
+      <div class="c-img">
+        <img src="https://images.unsplash.com/photo-1571266752735-a9b5ed5b167c?w=600&q=80" alt="DJ Amapiano night">
+        <span class="c-badge b-live">Tonight</span>
+      </div>
+      <div class="c-body">
+        <div class="c-genre">⚡ Amapiano</div>
+        <div class="c-title">DJ Neptune — Amapiano Night Vol. 7</div>
+        <div class="c-desc">Vol. 7 of Ibadan's most consistent electronic dance night. DJ Neptune brings the log drums, the keys, and the full Amapiano experience to an electric crowd.</div>
+        <div class="c-meta">
+          <div class="c-meta-i">📅 Thu, Mar 19, 2026</div>
+          <div class="c-meta-i">🕘 10:00 PM – 3:00 AM</div>
+          <div class="c-meta-i">📍 Ibadan</div>
+          <div class="c-meta-i">🏟 Amigos, UI Road</div>
+        </div>
+        <div class="c-att">
+          <div class="av-stack"><div class="av av1"></div><div class="av av3"></div></div>
+          <div class="att-txt">410 attending</div>
+        </div>
+      </div>
+      <div class="c-right">
+        <div><div class="c-price">₦2,000</div><div class="c-price-s">Door price</div></div>
+        <div class="c-actions">
+          <button class="btn-det" onclick="event.stopPropagation();openModal(5)">View Details →</button>
+          <button class="btn-save" onclick="event.stopPropagation();toggleSave(this)">♡ Save</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="load-more">
+    <button class="btn-load" id="ldBtn">↓ Load More Events</button>
+  </div>
+</section>
+
+<!-- ══ GENRE ══ -->
+<div class="genre-section">
+  <div class="sec-label" style="margin-bottom:16px">Browse by Genre</div>
+  <div class="cat-grid">
+    <div class="cat-card active"><div class="cat-icon">🔥</div><div class="cat-lbl">Afrobeats</div></div>
+    <div class="cat-card"><div class="cat-icon">🌀</div><div class="cat-lbl">Amapiano</div></div>
+    <div class="cat-card"><div class="cat-icon">🎷</div><div class="cat-lbl">Jazz</div></div>
+    <div class="cat-card"><div class="cat-icon">🎵</div><div class="cat-lbl">Highlife</div></div>
+    <div class="cat-card"><div class="cat-icon">⚡</div><div class="cat-lbl">Electronic</div></div>
+    <div class="cat-card"><div class="cat-icon">🎤</div><div class="cat-lbl">Hip-Hop</div></div>
+  </div>
+</div>
+
+<!-- ══ BOTTOM NAV ══ -->
+<nav class="bottom-nav">
+  <div class="bn-inner">
+    <button class="bn-item active" onclick="setBN(this)"><span class="bn-icon">⊞</span>Home</button>
+    <button class="bn-item" onclick="setBN(this);document.getElementById('events').scrollIntoView({behavior:'smooth'})"><span class="bn-icon">🎵</span>Events</button>
+    <button class="bn-item" onclick="setBN(this)"><span class="bn-icon">♡</span>Saved</button>
+    <button class="bn-item" onclick="setBN(this)"><span class="bn-icon">◉</span>Profile</button>
+  </div>
+</nav>
+
+<!-- ══ MODAL ══ -->
+<div class="modal-overlay" id="mOverlay" onclick="closeMO(event)">
+  <div class="modal" id="mModal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <img class="modal-img" id="mImg" src="" alt="">
+    <div class="modal-body">
+      <div class="m-genre" id="mGenre"></div>
+      <div class="m-title" id="mTitle"></div>
+      <div class="m-desc"  id="mDesc"></div>
+      <div class="m-grid">
+        <div class="m-detail"><div class="m-detail-lbl">Date</div><div class="m-detail-val" id="mDate"></div></div>
+        <div class="m-detail"><div class="m-detail-lbl">Time</div><div class="m-detail-val" id="mTime"></div></div>
+        <div class="m-detail"><div class="m-detail-lbl">Venue</div><div class="m-detail-val" id="mVenue"></div></div>
+        <div class="m-detail"><div class="m-detail-lbl">Location</div><div class="m-detail-val" id="mLoc"></div></div>
+      </div>
+      <div class="m-footer">
+        <div><div class="m-price" id="mPrice"></div><div class="m-price-s" id="mPriceSub"></div></div>
+        <button class="btn-ticket" onclick="showToast('🎟 Redirecting to tickets…')">Get Tickets →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── DATA ── */
+const EVS=[
+  {img:'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800&q=85',genre:'🔥 Afrobeats',title:'Burna Boy — Space Drift Tour',desc:"An explosive Afrobeats headline show from Grammy Award winner Burna Boy. Expect anthems, special guests, and a night that will define 2026. No curfew. No limits. Bringing the entire African Giant experience to Ibadan.",date:'Thu, Mar 19, 2026',time:'9:00 PM – 2:00 AM',venue:'Agodi Gardens Amphitheatre',loc:'Ibadan, Oyo State',price:'₦15,000',sub:'General Admission · VIP ₦35,000',free:false},
+  {img:'https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=800&q=85',genre:'🎷 Jazz & Soul',title:'Seun Kuti & Egypt 80 — Afrobeat Revivalist',desc:"Seun Kuti continues his father's revolutionary Afrobeat legacy with Egypt 80. A hypnotic blend of jazz, funk, and fierce political energy in an intimate seated venue.",date:'Fri, Mar 20, 2026',time:'8:00 PM – 11:00 PM',venue:'The Place, Jericho',loc:'Ibadan, Oyo State',price:'₦3,500',sub:'Table & Standing Available',free:false},
+  {img:'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&q=85',genre:'🌀 R&B / Afropop',title:'Tems × Omah Lay — Midnight Frequency',desc:"Two of Africa's most magnetic voices share a stage for a dreamy, soul-drenched night of R&B-infused Afropop with a full live band. This co-headline event is a rare moment — don't miss it.",date:'Sat, Mar 21, 2026',time:'8:30 PM – 12:00 AM',venue:'The Palms Event Centre',loc:'Ibadan, Oyo State',price:'₦25,000',sub:'VIP · Regular ₦12,000',free:false},
+  {img:'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=85',genre:'🎙 Open Mic',title:'Underground Voices — Open Mic Night',desc:"Ibadan's most vibrant open mic platform for emerging poets, singers, rappers, and spoken word artists. Sign up to perform or come witness the next big thing. All styles welcome.",date:'Sun, Mar 22, 2026',time:'7:00 PM – 10:30 PM',venue:'Cubana, Ring Road',loc:'Ibadan, Oyo State',price:'Free',sub:'Open to all — no ticket needed',free:true},
+  {img:'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&q=85',genre:'🎵 Highlife',title:'Adekunle Gold × Simi — Acoustic Sessions',desc:"An intimate acoustic evening with Nigeria's most beloved musical couple. Raw, stripped-back versions of fan favourites alongside new material from Adekunle Gold's latest LP.",date:'Fri, Mar 27, 2026',time:'7:30 PM – 10:00 PM',venue:'Leisure Mall',loc:'Osogbo, Osun State',price:'₦8,500',sub:'Seated Tickets Only',free:false},
+  {img:'https://images.unsplash.com/photo-1571266752735-a9b5ed5b167c?w=800&q=85',genre:'⚡ Amapiano',title:'DJ Neptune — Amapiano Night Vol. 7',desc:"Volume 7 of Ibadan's most consistent electronic dance night. DJ Neptune brings the log drums, the keys, and the full Amapiano experience to an electric crowd. Come early.",date:'Thu, Mar 19, 2026',time:'10:00 PM – 3:00 AM',venue:'Amigos, UI Road',loc:'Ibadan, Oyo State',price:'₦2,000',sub:'Door price — no pre-booking',free:false},
+];
+
+/* ── MODAL ── */
+function openModal(i){
+  const e=EVS[i];
+  document.getElementById('mImg').src=e.img;
+  document.getElementById('mImg').alt=e.title;
+  document.getElementById('mGenre').textContent=e.genre;
+  document.getElementById('mTitle').textContent=e.title;
+  document.getElementById('mDesc').textContent=e.desc;
+  document.getElementById('mDate').textContent=e.date;
+  document.getElementById('mTime').textContent=e.time;
+  document.getElementById('mVenue').textContent=e.venue;
+  document.getElementById('mLoc').textContent=e.loc;
+  const pe=document.getElementById('mPrice');
+  pe.textContent=e.price;pe.className='m-price'+(e.free?' free':'');
+  document.getElementById('mPriceSub').textContent=e.sub;
+  document.getElementById('mOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){document.getElementById('mOverlay').classList.remove('open');document.body.style.overflow='';}
+function closeMO(ev){if(ev.target===document.getElementById('mOverlay'))closeModal();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+/* ── HAMBURGER ── */
+const hbg=document.getElementById('hbg'),mm=document.getElementById('mmenu');
+function closeMM(){
+  mm.classList.remove('open');
+  hbg.querySelectorAll('span').forEach(s=>{s.style.transform='';s.style.opacity='';});
+}
+hbg.addEventListener('click',()=>{
+  const op=mm.classList.toggle('open');
+  const ss=hbg.querySelectorAll('span');
+  ss[0].style.transform=op?'rotate(45deg) translate(5px,5px)':'';
+  ss[1].style.opacity=op?'0':'1';
+  ss[2].style.transform=op?'rotate(-45deg) translate(5px,-5px)':'';
+});
+document.getElementById('mmEvents').addEventListener('click',()=>{closeMM();setTimeout(()=>document.getElementById('events').scrollIntoView({behavior:'smooth'}),100);});
+
+/* ── FILTER TABS ── */
+document.querySelectorAll('.f-tab').forEach(t=>{
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.f-tab').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+/* ── GENRE CARDS ── */
+document.querySelectorAll('.cat-card').forEach(c=>{
+  c.addEventListener('click',function(){
+    document.querySelectorAll('.cat-card').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+/* ── SAVE ── */
+function toggleSave(btn){
+  const s=btn.classList.toggle('saved');
+  btn.textContent=s?'♥ Saved':'♡ Save';
+  showToast(s?'♥ Event saved!':'Removed from saved');
+}
+
+/* ── BOTTOM NAV ── */
+function setBN(el){document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+
+/* ── LOAD MORE ── */
+document.getElementById('ldBtn').addEventListener('click',function(){
+  this.textContent='Loading…';
+  setTimeout(()=>{this.textContent='↓ Load More Events';showToast('All events loaded for this week');},1200);
+});
+
+/* ── TOAST ── */
+let tt;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+/* ── WAVEFORM ── */
+const cv=document.getElementById('wc'),cx2=cv.getContext('2d');
+let tk=0;
+const WVS=[
+  {amp:28,freq:.012,spd:.022,alpha:.22,c:[79,140,255],off:0},
+  {amp:18,freq:.018,spd:.030,alpha:.16,c:[155,114,255],off:1.5},
+  {amp:36,freq:.008,spd:.015,alpha:.10,c:[125,211,252],off:3},
+  {amp:12,freq:.025,spd:.040,alpha:.08,c:[79,140,255],off:5},
+];
+function rsz(){cv.width=window.innerWidth;cv.height=180;}
+rsz();window.addEventListener('resize',rsz);
+function draw(){
+  cx2.clearRect(0,0,cv.width,cv.height);
+  const W=cv.width,H=cv.height,cy=H*.6;
+  WVS.forEach(w=>{
+    cx2.beginPath();cx2.moveTo(0,cy);
+    for(let x=0;x<=W;x+=2){
+      const y=cy+Math.sin(x*w.freq+tk*w.spd+w.off)*w.amp+Math.sin(x*w.freq*1.7+tk*w.spd*1.3+w.off)*(w.amp*.4);
+      cx2.lineTo(x,y);
+    }
+    cx2.lineTo(W,H);cx2.lineTo(0,H);cx2.closePath();
+    cx2.fillStyle=`rgba(${w.c[0]},${w.c[1]},${w.c[2]},${w.alpha})`;cx2.fill();
+  });
+  tk++;requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
